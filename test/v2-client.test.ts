@@ -94,6 +94,25 @@ describe("v2-client adapter (issue #36, DRY: reuses all tool logic)", () => {
     })
   })
 
+  test("session.create tolerates hosts without permission.rules (opencode 2.0.27+)", async () => {
+    const { calls, ctx } = mockCtx()
+    // Newer hosts dropped the rules() re-assert API entirely.
+    const ctxWithoutRules = { ...ctx, permission: {} }
+    const client = createV2Client(ctxWithoutRules as never)
+    const result = await client.session.create({
+      parentID: "ses_lead",
+      title: "alice (@build teammate)",
+      permission: [{ permission: "team_message", pattern: "*", action: "allow" }],
+    })
+    // Create still succeeded, and the permission rules ship in the input.
+    expect(result.data?.id).toBe("ses_new123")
+    expect(calls[0]?.input).toMatchObject({
+      permissions: [{ action: "team_message", resource: "*", effect: "allow" }],
+    })
+    // The absent rules() must not throw or be called.
+    expect(calls.find((c) => c.method === "rules")).toBeUndefined()
+  })
+
   test("session.create maps parentID/title/permissions to V2 shape", async () => {
     const { calls: calls2, ctx: ctx2 } = mockCtx()
     const client2 = createV2Client(ctx2 as never)

@@ -119,7 +119,14 @@ export function createV2Client(ctx: V2Context, deps: V2ClientDeps = {}): PluginC
           // and agent rules apply later), which strips team tools from
           // read-only agents. Re-assert here: rules() evaluates after the
           // agent's rules, restoring the tools. OQ-V2-rules.
-          await ctx.permission.rules({ sessionID: created.id, permissions })
+          //
+          // Host compatibility: opencode 2.0.27+ no longer exposes
+          // permission.rules, which would otherwise throw on every spawn.
+          // The create-input permissions above are still applied; this
+          // re-assert is best-effort, so skip it when absent.
+          if (typeof ctx.permission.rules === "function") {
+            await ctx.permission.rules({ sessionID: created.id, permissions })
+          }
         }
         return { data: { id: created.id } }
       },
